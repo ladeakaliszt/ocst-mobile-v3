@@ -9,7 +9,7 @@ const API_KEY     = 'OCSTMLBL2020';
 const PANIC_HOLD  = 300;   // ms — 0.3 saniye
 
 // 112 SMS numarası
-const SMS_NUMBER  = '112';
+const SMS_NUMBER  = '113';
 
 // ── ACİL KOD TANIMLAMALARI ───────────────────────────
 const EMERGENCY_CODES = {
