@@ -5,7 +5,7 @@
 // Ana sunucu URL — mobil sitenin bağlanacağı Railway URL
 const SERVER_URL = 'https://ocst-arsiv-database.up.railway.app';
 const API_KEY    = 'OCSTMLBL2020';
-const PANIC_HOLD = 1500; // ms — basılı tutma süresi
+const PANIC_HOLD = 500; // ms — basılı tutma süresi
 
 let username   = '';
 let panicTimer = null;
