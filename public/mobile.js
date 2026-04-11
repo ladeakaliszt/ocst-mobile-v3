@@ -326,18 +326,32 @@ async function sendEmergencySms(code) {
 // ══════════════════════════════════════════════════════
 async function reverseGeocode(lat, lng) {
   try {
-    const url  = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=tr`;
-    const res  = await fetch(url, { headers: { 'Accept-Language': 'tr' } });
+    const url  = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=tr&zoom=18&addressdetails=1`;
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'tr', 'User-Agent': 'OCST-Mobil/1.0' } });
     const data = await res.json();
     const a    = data.address || {};
 
-    const parts = [];
-    if (a.province || a.state)  parts.push(a.province || a.state);
-    if (a.county || a.district) parts.push(a.county || a.district);
-    if (a.suburb || a.neighbourhood || a.quarter) parts.push(a.suburb || a.neighbourhood || a.quarter);
-    if (a.road || a.pedestrian) parts.push(a.road || a.pedestrian);
+    // İl — Istanbul icin 'province', diger sehirler icin 'state' veya 'city'
+    const il = a.province || a.state || a.city || '';
 
-    return parts.length ? parts.join(', ') : (data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    // Ilce — Istanbul'da Nominatim 'city_district' veya 'town' doner
+    const ilce = a.city_district || a.town || a.district || a.county || a.municipality || '';
+
+    // Mahalle/semt
+    const mahalle = a.suburb || a.neighbourhood || a.quarter || a.hamlet || '';
+
+    // Cadde/sokak
+    const cadde = a.road || a.pedestrian || a.footway || a.street || '';
+
+    const parts = [];
+    if (il)      parts.push(il);
+    if (ilce)    parts.push(ilce);
+    if (mahalle) parts.push(mahalle);
+    if (cadde)   parts.push(cadde);
+
+    return parts.length
+      ? parts.join(' / ')
+      : (data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
   } catch {
     return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   }
