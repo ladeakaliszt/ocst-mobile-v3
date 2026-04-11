@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>OCST Mobil</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+
+<!-- ══ KULLANICI ADI EKRANI ══ -->
+<div id="screen-name">
+  <div class="name-box">
+    <div class="name-logo">⬡</div>
+    <div class="name-title">OCST MOBİL</div>
+    <div class="name-sub">ORANGE COUNTY SHERIFF'S TECHNOLOGY</div>
+    <div class="name-desc">Kimliğiniz çağrılara otomatik eklenir.<br>Bir kez girin, hatırlanır.</div>
+    <input type="text" id="name-input" placeholder="Adınızı girin..." autocomplete="off" spellcheck="false" maxlength="32">
+    <button class="name-btn" onclick="saveName()">DEVAM ET</button>
+    <div id="name-error" class="name-error"></div>
+  </div>
+</div>
+
+<!-- ══ ANA EKRAN ══ -->
+<div id="screen-main" style="display:none">
+
+  <div class="mob-header">
+    <div class="mob-logo">⬡ OCST</div>
+    <div class="mob-user" id="mob-username"></div>
+  </div>
+
+  <div class="mob-status-bar">
+    <span id="mob-ws-dot" class="ws-dot-red">●</span>
+    <span id="mob-ws-label" style="font-size:10px;letter-spacing:1px">BAĞLANIYOR...</span>
+  </div>
+
+  <!-- PANİK BUTONU -->
+  <div class="panic-section">
+    <div class="panic-label">ACİL DURUM</div>
+    <button id="panic-btn" class="panic-btn" onpointerdown="startPanicPress()" onpointerup="cancelPanicPress()" onpointerleave="cancelPanicPress()">
+      <div class="panic-inner">
+        <div class="panic-icon">🚨</div>
+        <div class="panic-text">PANİK</div>
+        <div class="panic-subtext">BASMAK İÇİN TIKLAYIP TUTUN</div>
+      </div>
+      <svg class="panic-progress" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,68,68,0.2)" stroke-width="6"/>
+        <circle id="panic-circle" cx="60" cy="60" r="54" fill="none" stroke="#ff4444" stroke-width="6"
+          stroke-dasharray="339.3" stroke-dashoffset="339.3" stroke-linecap="round"
+          transform="rotate(-90 60 60)"/>
+      </svg>
+    </button>
+    <div class="panic-hint">1.5 saniye basılı tutun</div>
+    <div id="panic-status" class="panic-status"></div>
+  </div>
+
+  <!-- NORMAL ÇAĞRI -->
+  <div class="call-section">
+    <div class="call-section-title">[ ÇAĞRI YÖNETİMİ ]</div>
+    <button class="call-new-btn" onclick="showCallForm()">
+      <span>📞</span> Çağrı Gönder
+    </button>
+  </div>
+
+  <!-- SON ÇAĞRILARIM -->
+  <div class="recent-section">
+    <div class="call-section-title">[ SON ÇAĞRILARIM ]</div>
+    <div id="recent-calls"></div>
+  </div>
+
+</div>
+
+<!-- ══ ÇAĞRI FORMU ══ -->
+<div id="screen-call" style="display:none">
+  <div class="mob-header">
+    <button class="back-btn" onclick="showMain()">◄ GERİ</button>
+    <div class="mob-logo">YENİ ÇAĞRI</div>
+  </div>
+
+  <div class="call-form">
+    <div class="cf-field">
+      <label>ÇAĞRI BAŞLIĞI <span class="req">*</span></label>
+      <input type="text" id="cf-title" placeholder="Kısa ve net başlık..." autocomplete="off" spellcheck="false" maxlength="100">
+    </div>
+    <div class="cf-field">
+      <label>ÇAĞRI DETAYI</label>
+      <textarea id="cf-detail" placeholder="Detaylı açıklama..." spellcheck="false"></textarea>
+    </div>
+    <div class="cf-field">
+      <label>KONUM</label>
+      <div class="cf-location-row">
+        <input type="text" id="cf-location" placeholder="Konum yazın veya GPS alın..." spellcheck="false">
+        <button class="cf-gps-btn" onclick="getGPS('cf')">📍 GPS</button>
+      </div>
+      <div id="cf-gps-status" class="gps-status"></div>
+    </div>
+    <div id="cf-error" class="cf-error"></div>
+    <button class="cf-submit-btn" onclick="submitCall()">[ ÇAĞRI GÖNDER ]</button>
+  </div>
+</div>
+
+<!-- ══ GÖNDERİLDİ EKRANI ══ -->
+<div id="screen-sent" style="display:none">
+  <div class="sent-box">
+    <div class="sent-icon">✅</div>
+    <div class="sent-title">ÇAĞRI GÖNDERİLDİ</div>
+    <div class="sent-sub">Merkez bilgilendirildi.</div>
+    <button class="sent-back-btn" onclick="showMain()">ANA SAYFAYA DÖN</button>
+  </div>
+</div>
+
+<script src="mobile.js"></script>
+</body>
+</html>
