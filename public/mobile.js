@@ -331,11 +331,11 @@ async function reverseGeocode(lat, lng) {
     const data = await res.json();
     const a    = data.address || {};
 
-    // İl — Istanbul icin 'province', diger sehirler icin 'state' veya 'city'
-    const il = a.province || a.state || a.city || '';
+    // İl — province veya state (city degil, Istanbul'da city de "Istanbul" donuyor)
+    const il = a.province || a.state || '';
 
-    // Ilce — Istanbul'da Nominatim 'city_district' veya 'town' doner
-    const ilce = a.city_district || a.town || a.district || a.county || a.municipality || '';
+    // Ilce — Istanbul'da 'town' doner (Fatih, Besiktas vb.), diger sehirlerde district/county
+    const ilce = a.town || a.city_district || a.district || a.county || a.municipality || '';
 
     // Mahalle/semt
     const mahalle = a.suburb || a.neighbourhood || a.quarter || a.hamlet || '';
