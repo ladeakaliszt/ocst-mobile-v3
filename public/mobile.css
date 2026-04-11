@@ -398,3 +398,49 @@ html, body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ── GEMİNİ MESAJ BALONLARI ── */
+.gm-ai {
+  align-self: flex-start;
+  background: rgba(255,68,68,.1);
+  border: 1px solid rgba(255,68,68,.3);
+  color: #ffaaaa;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 14px;
+  max-width: 85%;
+  line-height: 1.5;
+  letter-spacing: .5px;
+}
+
+.gm-user {
+  align-self: flex-end;
+  background: rgba(74,158,255,.1);
+  border: 1px solid rgba(74,158,255,.3);
+  color: #c8d8e8;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 14px;
+  max-width: 85%;
+  line-height: 1.5;
+  letter-spacing: .5px;
+}
+
+/* Dalga animasyonu */
+.gm-wave {
+  display: inline-block;
+  width: 4px;
+  border-radius: 2px;
+  background: #ff4444;
+  animation: gm-wave-bar .8s ease-in-out infinite;
+}
+.gm-wave:nth-child(1) { height: 8px;  animation-delay: 0s; }
+.gm-wave:nth-child(2) { height: 16px; animation-delay: .1s; }
+.gm-wave:nth-child(3) { height: 24px; animation-delay: .2s; }
+.gm-wave:nth-child(4) { height: 16px; animation-delay: .1s; }
+.gm-wave:nth-child(5) { height: 8px;  animation-delay: 0s; }
+
+@keyframes gm-wave-bar {
+  0%,100% { transform: scaleY(1); opacity: .5; }
+  50%      { transform: scaleY(1.6); opacity: 1; }
+}

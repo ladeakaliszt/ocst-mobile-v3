@@ -201,8 +201,8 @@ async function onPanicFired() {
     // Kod seçili → konum al, direkt SMS
     await sendEmergencySms(selectedCode);
   } else {
-    // Kod seçili değil → sesli komut
-    startVoiceRecognition();
+    // Kod seçili değil → Gemini sesli asistan
+    openGeminiAssistant();
   }
 }
 
@@ -509,4 +509,288 @@ function formatTime(ts) {
 function escH(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════════
+// GEMİNİ SESLİ ACİL ASISTAN
+// ══════════════════════════════════════════════════════
+
+const GEMINI_API_KEY = 'AIzaSyDhbWG-sE5anR_b8VCV4gjy3pJ5iba4ZXY';
+const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+const GEMINI_SYSTEM = `Sen bir acil durum asistanısın. Kullanıcının acil durumunu hızla anlayıp 112 SMS mesajı hazırlarsın.
+
+KURALLAR:
+- İlk mesajın her zaman sadece şu olsun: "Acil durum nedir?"
+- Maksimum 3 kısa soru sor, her soru tek cümle, Türkçe
+- Yeterli bilgi alınca SMS_HAZIR etiketiyle JSON döndür
+
+ACİL KOD SINIFLANDIRMASI:
+Trafik kazası → 90, tek yaralı → 90A, 3+ yaralı → 90B
+Kavga → 91, yaralı → 91A, kalabalık → 91B
+Kesici alet → 92, ateşli silah → 93, silahlı çatışma → 94
+Bayılma/bilinç kaybı → 95, takip → 99
+
+SMS FORMATLARI (kullanıcı ağzından, birinci şahıs):
+90:  "Acil durum. Trafik kazası yaşandı. $KONUM"
+90A: "Acil durum. Trafik kazası yaşandı. Tek yaralı var. $KONUM"
+90B: "Acil durum. Büyük trafik kazası yaşandı. 3'ten fazla yaralı var. $KONUM"
+91:  "Acil durum. Burada kavga yaşanıyor. $KONUM"
+91A: "Acil durum. Kavga yaşanıyor, yaralı var. $KONUM"
+91B: "Acil durum. Kalabalık grup kavga ediyor. $KONUM"
+92:  "Acil durum. Kavga var, taraflarda kesici alet. $KONUM"
+93:  "Acil durum. Kavga var, taraflarda ateşli silah. $KONUM"
+94:  "Acil durum. Silahlı çatışma yaşanıyor. Tehlikedeyiz. $KONUM"
+95:  "Acil durum. Birisi bilincini kaybetti. Acil sağlık gerekiyor. $KONUM"
+99:  "Acil durum. Takip ediliyorum, tehlikedeyim. Polis gerekiyor. $KONUM"
+
+Yeterli bilgi aldığında SADECE şu JSON formatını döndür, başka hiçbir şey yazma:
+SMS_HAZIR:{"kod":"91A","sms":"Acil durum. Kavga var, yaralı var. $KONUM","ekip_notu":"Kavga, 2 kişi, biri yaralı"}`;
+
+// State
+let geminiHistory  = [];
+let geminiActive   = false;
+let geminiSpeaking = false;
+let geminiRec      = null;
+let geminiLat      = null;
+let geminiLng      = null;
+let geminiLocStr   = '';
+
+// ── ASISTANI AÇ ───────────────────────────────────────
+async function openGeminiAssistant() {
+  geminiHistory  = [];
+  geminiActive   = true;
+  geminiSpeaking = false;
+  geminiLat      = null;
+  geminiLng      = null;
+  geminiLocStr   = '';
+
+  // Overlay'i göster
+  document.getElementById('gemini-overlay').style.display = 'flex';
+  document.getElementById('gemini-msgs').innerHTML = '';
+  document.getElementById('gemini-status').textContent = '';
+
+  // Arka planda konum al
+  getGeminiLocation();
+
+  // İlk Gemini mesajı
+  const first = 'Acil durum nedir?';
+  appendGeminiMsg('ai', first);
+  speak(first, () => startGeminiListening());
+}
+
+function closeGeminiAssistant() {
+  geminiActive   = false;
+  geminiSpeaking = false;
+  stopGeminiListening();
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  document.getElementById('gemini-overlay').style.display = 'none';
+}
+
+// ── KONUM AL ─────────────────────────────────────────
+async function getGeminiLocation() {
+  try {
+    const pos  = await getPositionPromise();
+    geminiLat  = pos.coords.latitude;
+    geminiLng  = pos.coords.longitude;
+    geminiLocStr = await reverseGeocode(geminiLat, geminiLng);
+  } catch {
+    geminiLocStr = 'Konum alınamadı';
+  }
+}
+
+// ── SES TANIMA ────────────────────────────────────────
+function startGeminiListening() {
+  if (!geminiActive || geminiSpeaking) return;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    document.getElementById('gemini-status').textContent = '⚠️ Mikrofon desteklenmiyor, yazarak devam edin';
+    document.getElementById('gemini-input-row').style.display = 'flex';
+    return;
+  }
+
+  geminiRec = new SpeechRec();
+  geminiRec.lang = 'tr-TR';
+  geminiRec.continuous = false;
+  geminiRec.interimResults = true;
+
+  const statusEl = document.getElementById('gemini-status');
+  statusEl.textContent = '🎙️ Dinleniyor...';
+
+  geminiRec.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    const current = (final || interim).trim();
+    statusEl.textContent = current ? `"${current}"` : '🎙️ Dinleniyor...';
+
+    if (final.trim()) {
+      stopGeminiListening();
+      handleUserMessage(final.trim());
+    }
+  };
+
+  geminiRec.onerror = () => {
+    statusEl.textContent = '⚠️ Ses alınamadı, tekrar deneyin';
+    setTimeout(() => { if (geminiActive && !geminiSpeaking) startGeminiListening(); }, 1500);
+  };
+
+  geminiRec.onend = () => {
+    if (geminiActive && !geminiSpeaking) {
+      setTimeout(() => startGeminiListening(), 500);
+    }
+  };
+
+  try { geminiRec.start(); } catch {}
+}
+
+function stopGeminiListening() {
+  if (geminiRec) { try { geminiRec.stop(); } catch {} geminiRec = null; }
+}
+
+// ── KULLANICI MESAJI ──────────────────────────────────
+async function handleUserMessage(text) {
+  if (!geminiActive) return;
+  appendGeminiMsg('user', text);
+  document.getElementById('gemini-status').textContent = '⏳ Değerlendiriliyor...';
+
+  // Gemini'ya gönder
+  const reply = await askGemini(text);
+  if (!reply) {
+    document.getElementById('gemini-status').textContent = '❌ Bağlantı hatası';
+    setTimeout(() => startGeminiListening(), 2000);
+    return;
+  }
+
+  // SMS_HAZIR kontrolü
+  if (reply.includes('SMS_HAZIR:')) {
+    try {
+      const jsonStr = reply.split('SMS_HAZIR:')[1].trim();
+      const parsed  = JSON.parse(jsonStr);
+      handleGeminiAction(parsed);
+      return;
+    } catch {}
+  }
+
+  // Normal soru/cevap
+  appendGeminiMsg('ai', reply);
+  speak(reply, () => startGeminiListening());
+}
+
+// ── GEMİNİ API ───────────────────────────────────────
+async function askGemini(userText) {
+  geminiHistory.push({ role: 'user', parts: [{ text: userText }] });
+
+  try {
+    const res  = await fetch(GEMINI_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        system_instruction: { parts: [{ text: GEMINI_SYSTEM }] },
+        contents: geminiHistory,
+        generationConfig: { temperature: 0.1, maxOutputTokens: 300 }
+      })
+    });
+    const data  = await res.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (reply) geminiHistory.push({ role: 'model', parts: [{ text: reply }] });
+    return reply;
+  } catch {
+    return null;
+  }
+}
+
+// ── ACİL AKSİYON ─────────────────────────────────────
+async function handleGeminiAction(parsed) {
+  const { kod, sms, ekip_notu } = parsed;
+
+  // Konum henüz alınmadıysa bekle
+  if (!geminiLocStr) {
+    document.getElementById('gemini-status').textContent = '📍 Konum alınıyor...';
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  const coords   = (geminiLat && geminiLng) ? `${geminiLat.toFixed(6)}, ${geminiLng.toFixed(6)}` : 'N/A';
+  const mapsLink = (geminiLat && geminiLng) ? `https://maps.google.com/?q=${geminiLat},${geminiLng}` : '';
+  const locFull  = `Konum: ${geminiLocStr}. Koordinat: ${coords}. Harita: ${mapsLink}`;
+  const smsFinal = sms.replace('$KONUM', locFull);
+
+  // Onay mesajı göster
+  const aiMsg = `Durumu anladım. ${ekip_notu || ''}. Ekibe bildiriyorum ve 112 SMS hazırlıyorum.`;
+  appendGeminiMsg('ai', aiMsg);
+  speak(aiMsg, async () => {
+    closeGeminiAssistant();
+
+    // Ekibe gönder
+    try {
+      await fetch(`${SERVER_URL}/api/calls`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body:    JSON.stringify({
+          type:     'panic',
+          title:    `🚨 GEMİNİ — KOD ${kod}`,
+          detail:   smsFinal,
+          location: geminiLocStr,
+          lat:      geminiLat,
+          lng:      geminiLng,
+          author:   username,
+          code:     kod
+        })
+      });
+    } catch {}
+
+    // SMS aç
+    saveMyCalls({ type:'panic', title:`GEMİNİ KOD ${kod}`, location: geminiLocStr, createdAt: Date.now() });
+    window.location.href = `sms:${SMS_NUMBER}?body=${encodeURIComponent(smsFinal)}`;
+  });
+}
+
+// ── SES OKUMA (TTS) ───────────────────────────────────
+function speak(text, onEnd) {
+  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
+  window.speechSynthesis.cancel();
+  geminiSpeaking = true;
+
+  const utt  = new SpeechSynthesisUtterance(text);
+  utt.lang   = 'tr-TR';
+  utt.rate   = 1.1;
+  utt.pitch  = 1;
+
+  // Türkçe ses seç
+  const voices = window.speechSynthesis.getVoices();
+  const trVoice = voices.find(v => v.lang.startsWith('tr'));
+  if (trVoice) utt.voice = trVoice;
+
+  utt.onend = () => {
+    geminiSpeaking = false;
+    onEnd && onEnd();
+  };
+  utt.onerror = () => {
+    geminiSpeaking = false;
+    onEnd && onEnd();
+  };
+
+  window.speechSynthesis.speak(utt);
+}
+
+// ── YAZARAK GİRİŞ (fallback) ─────────────────────────
+function geminiSendText() {
+  const input = document.getElementById('gemini-text-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  handleUserMessage(text);
+}
+
+// ── MESAJ KUTUSU ─────────────────────────────────────
+function appendGeminiMsg(role, text) {
+  const el   = document.getElementById('gemini-msgs');
+  const div  = document.createElement('div');
+  div.className = role === 'ai' ? 'gm-ai' : 'gm-user';
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
 }
