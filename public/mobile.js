@@ -515,8 +515,8 @@ function escH(s) {
 // GEMİNİ SESLİ ACİL ASISTAN
 // ══════════════════════════════════════════════════════
 
-const GEMINI_API_KEY = 'AIzaSyDhbWG-sE5anR_b8VCV4gjy3pJ5iba4ZXY';
-const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Gemini key artık sunucuda — frontend görmez
+const GEMINI_URL = '/api/gemini';
 
 const GEMINI_SYSTEM = `Sen bir acil durum asistanısın. Kullanıcının acil durumunu hızla anlayıp 112 SMS mesajı hazırlarsın.
 
@@ -569,14 +569,21 @@ async function openGeminiAssistant() {
   document.getElementById('gemini-overlay').style.display = 'flex';
   document.getElementById('gemini-msgs').innerHTML = '';
   document.getElementById('gemini-status').textContent = '';
+  document.getElementById('gemini-input-row').style.display = 'none';
 
   // Arka planda konum al
   getGeminiLocation();
 
-  // İlk Gemini mesajı
-  const first = 'Acil durum nedir?';
-  appendGeminiMsg('ai', first);
-  speak(first, () => startGeminiListening());
+  // Panik butonu etkileşimi zaten kullanıcı aksiyonu sayılır
+  // Direkt sesli başlat — başka butona gerek yok
+  appendGeminiMsg('ai', 'Acil durum nedir?');
+  document.getElementById('gemini-status').textContent = '🎙️ Dinleniyor...';
+  speak('Acil durum nedir?', () => startGeminiListening());
+}
+
+// Artık kullanılmıyor, ama kalsın
+function geminiStart() {
+  speak('Acil durum nedir?', () => startGeminiListening());
 }
 
 function closeGeminiAssistant() {
@@ -695,10 +702,12 @@ async function askGemini(userText) {
       })
     });
     const data  = await res.json();
+    if (data.error) { console.error('Gemini hata:', data.error); return null; }
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
     if (reply) geminiHistory.push({ role: 'model', parts: [{ text: reply }] });
     return reply;
-  } catch {
+  } catch (e) {
+    console.error('Gemini fetch hata:', e);
     return null;
   }
 }
@@ -724,7 +733,15 @@ async function handleGeminiAction(parsed) {
   speak(aiMsg, async () => {
     closeGeminiAssistant();
 
-    // Ekibe gönder
+    // Konuşma transcript'ini düzenle
+    const transcript = geminiHistory.map(m => {
+      const rol  = m.role === 'user' ? username.toUpperCase() : 'ASİSTAN';
+      const text = m.parts?.[0]?.text || '';
+      return `[${rol}]: ${text}`;
+    }).join('\n');
+
+    // Ekibe gönder (SMS metni + tam transcript)
+    const detailFull = `SMS METNI:\n${smsFinal}\n\n--- KONUŞMA TRANSCRİPTİ ---\n${transcript}`;
     try {
       await fetch(`${SERVER_URL}/api/calls`, {
         method:  'POST',
@@ -732,7 +749,7 @@ async function handleGeminiAction(parsed) {
         body:    JSON.stringify({
           type:     'panic',
           title:    `🚨 GEMİNİ — KOD ${kod}`,
-          detail:   smsFinal,
+          detail:   detailFull,
           location: geminiLocStr,
           lat:      geminiLat,
           lng:      geminiLng,
