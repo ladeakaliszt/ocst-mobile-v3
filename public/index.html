@@ -44,7 +44,7 @@
       <div class="panic-inner">
         <div class="panic-icon">🚨</div>
         <div class="panic-text">PANİK</div>
-        <div class="panic-subtext">BASMAK İÇİN TIKLAYIP TUTUN</div>
+        <div class="panic-subtext" id="panic-subtext">BASMAK İÇİN TIKLAYIP TUTUN</div>
       </div>
       <svg class="panic-progress" viewBox="0 0 120 120">
         <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,68,68,0.2)" stroke-width="6"/>
@@ -53,8 +53,60 @@
           transform="rotate(-90 60 60)"/>
       </svg>
     </button>
-    <div class="panic-hint">0.5 saniye basılı tutun</div>
+    <div class="panic-hint" id="panic-hint">0.3 saniye basılı tutun</div>
     <div id="panic-status" class="panic-status"></div>
+  </div>
+
+  <!-- KOD BUTONLARI -->
+  <div class="code-section">
+    <div class="call-section-title">[ ACİL KOD SEÇ — OPSİYONEL ]</div>
+    <div class="code-hint">Seçiliyse: direkt SMS · Seçili değilse: sesli komut</div>
+    <div class="code-grid">
+      <button class="code-btn" data-code="90" onclick="toggleCode(this, '90')">
+        <span class="code-num">90</span>
+        <span class="code-lbl">(Kaza)</span>
+      </button>
+      <button class="code-btn" data-code="91" onclick="toggleCode(this, '91')">
+        <span class="code-num">91</span>
+        <span class="code-lbl">(Kavga)</span>
+      </button>
+      <button class="code-btn" data-code="92" onclick="toggleCode(this, '92')">
+        <span class="code-num">92</span>
+        <span class="code-lbl">(Kesici D.A.)</span>
+      </button>
+      <button class="code-btn" data-code="93" onclick="toggleCode(this, '93')">
+        <span class="code-num">93</span>
+        <span class="code-lbl">(A. Silah)</span>
+      </button>
+      <button class="code-btn" data-code="94" onclick="toggleCode(this, '94')">
+        <span class="code-num">94</span>
+        <span class="code-lbl">(Çatışma)</span>
+      </button>
+      <button class="code-btn" data-code="95" onclick="toggleCode(this, '95')">
+        <span class="code-num">95</span>
+        <span class="code-lbl">(Bayılma)</span>
+      </button>
+    </div>
+    <div class="code-grid-single">
+      <button class="code-btn code-btn-99" data-code="99" onclick="toggleCode(this, '99')">
+        <span class="code-num">99</span>
+        <span class="code-lbl">(Takip)</span>
+      </button>
+    </div>
+    <div id="selected-code-label" class="selected-code-label"></div>
+  </div>
+
+  <!-- SES TANIMA OVERLAY -->
+  <div id="voice-overlay" class="voice-overlay" style="display:none">
+    <div class="voice-box">
+      <div class="voice-wave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="voice-title">DİNLİYOR...</div>
+      <div class="voice-sub">Acil kodunuzu söyleyin<br><strong>90 ile 99 arası</strong></div>
+      <div id="voice-transcript" class="voice-transcript"></div>
+      <button class="voice-cancel" onclick="cancelVoice()">İPTAL</button>
+    </div>
   </div>
 
   <!-- NORMAL ÇAĞRI -->
