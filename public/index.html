@@ -181,6 +181,41 @@
   </div>
 </div>
 
+<!-- ══ ARAMA GERİ SAYIM OVERLAY ══ -->
+<div id="call-countdown-overlay" style="display:none; position:fixed; inset:0; z-index:700; background:rgba(4,10,20,.96); flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(6px);">
+  <div style="width:90%; max-width:320px; background:rgba(10,20,40,.98); border:1px solid #ff4444; box-shadow:0 0 60px rgba(255,68,68,.25); padding:36px 28px; display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center; font-family:'Share Tech Mono',monospace;">
+
+    <div style="font-size:11px; color:#ff4444; letter-spacing:4px;">ACİL ARAMA</div>
+
+    <!-- Geri sayım halkası -->
+    <div style="position:relative; width:120px; height:120px;">
+      <svg viewBox="0 0 120 120" style="width:120px;height:120px;position:absolute;inset:0;">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,68,68,0.15)" stroke-width="6"/>
+        <circle id="call-ring" cx="60" cy="60" r="50" fill="none" stroke="#ff4444" stroke-width="6"
+          stroke-dasharray="314.2" stroke-dashoffset="0" stroke-linecap="round"
+          transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s linear; filter:drop-shadow(0 0 6px rgba(255,68,68,.8));"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;">
+        <div style="font-size:36px; line-height:1;">📞</div>
+        <div id="call-countdown-num" style="font-size:22px; color:#ff4444; font-weight:bold; letter-spacing:2px; line-height:1;">10</div>
+      </div>
+    </div>
+
+    <div style="font-size:13px; color:#c8d8e8; letter-spacing:1px; line-height:1.8;">
+      <span id="call-countdown-number" style="color:#ffaa00; font-size:15px; letter-spacing:2px;">0552 590 75 79</span><br>
+      <span style="font-size:10px; color:#6a8aaa;">aranacak</span>
+    </div>
+
+    <div style="font-size:10px; color:#6a8aaa; letter-spacing:1px; line-height:1.6;">
+      SMS gönderildi. Aramayı iptal etmek için<br>aşağıya basın.
+    </div>
+
+    <button onclick="cancelCallCountdown()" style="width:100%; background:transparent; border:1px solid #6a8aaa; color:#6a8aaa; font-family:'Share Tech Mono',monospace; font-size:13px; padding:14px; cursor:pointer; letter-spacing:2px; margin-top:4px;">
+      İPTAL ET
+    </button>
+  </div>
+</div>
+
 <script src="mobile.js"></script>
 </body>
 </html>

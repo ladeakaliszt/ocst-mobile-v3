@@ -8,8 +8,10 @@ const SERVER_URL  = 'https://ocst-arsiv-database.up.railway.app';
 const API_KEY     = 'OCSTMLBL2020';
 const PANIC_HOLD  = 300;   // ms — 0.3 saniye
 
-// 112 SMS numarası
-const SMS_NUMBER  = '113';
+// SMS ve arama numaraları
+const SMS_NUMBER     = '113';          // SMS gönderim numarası
+const CALL_NUMBER    = '05525907579';  // Test: canlıya geçince 112 yap
+const COUNTDOWN_SECS = 10;
 
 // ── ACİL KOD TANIMLAMALARI ───────────────────────────
 const EMERGENCY_CODES = {
@@ -72,16 +74,17 @@ function parseVoiceCode(transcript) {
 }
 
 // ── STATE ─────────────────────────────────────────────
-let username      = '';
-let panicTimer    = null;
-let panicAnim     = null;
-let panicStart    = 0;
-let gpsLat        = null;
-let gpsLng        = null;
-let myCalls       = [];
-let selectedCode  = null;   // seçili acil kod
-let recognition   = null;   // SpeechRecognition instance
-let voiceActive   = false;
+let username       = '';
+let panicTimer     = null;
+let panicAnim      = null;
+let panicStart     = 0;
+let gpsLat         = null;
+let gpsLng         = null;
+let myCalls        = [];
+let selectedCode   = null;   // seçili acil kod
+let recognition    = null;   // SpeechRecognition instance
+let voiceActive    = false;
+let countdownTimer = null;   // arama geri sayım
 
 // ══════════════════════════════════════════════════════
 // BAŞLANGIÇ
@@ -330,13 +333,62 @@ function finalizeSms(code, locStr, mapsLink, coords, lat, lng, placeName) {
 
   sendToServer(code, fullLoc, lat, lng, body);
 
+  // SMS uygulamasını aç
   const smsUri = `sms:${SMS_NUMBER}?body=${encodeURIComponent(body)}`;
   window.location.href = smsUri;
 
-  statusEl.textContent = `✅ KOD ${code} — SMS UYGULAMASI AÇILDI`;
+  statusEl.textContent = `✅ KOD ${code} — SMS AÇILDI · ARAMA BAŞLIYOR...`;
   statusEl.className   = 'panic-status sent';
   saveMyCalls({ type:'panic', title:`PANİK KOD ${code}`, location: fullLoc, createdAt: Date.now() });
-  setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'panic-status'; }, 8000);
+
+  // SMS açıldıktan sonra geri sayımı başlat
+  setTimeout(() => startCallCountdown(), 800);
+}
+
+// ══════════════════════════════════════════════════════
+// ARAMA GERİ SAYIMI
+// ══════════════════════════════════════════════════════
+function startCallCountdown() {
+  const overlay = document.getElementById('call-countdown-overlay');
+  const numEl   = document.getElementById('call-countdown-num');
+  const ring    = document.getElementById('call-ring');
+  const total   = 314.2; // 2πr, r=50
+
+  if (!overlay) return;
+
+  let remaining = COUNTDOWN_SECS;
+
+  overlay.style.display = 'flex';
+  numEl.textContent = remaining;
+  ring.style.strokeDashoffset = '0';
+
+  countdownTimer = setInterval(() => {
+    remaining--;
+    numEl.textContent = remaining;
+
+    const ratio = (COUNTDOWN_SECS - remaining) / COUNTDOWN_SECS;
+    ring.style.strokeDashoffset = (total * ratio).toFixed(1);
+
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      overlay.style.display = 'none';
+      window.location.href = `tel:${CALL_NUMBER}`;
+    }
+  }, 1000);
+}
+
+function cancelCallCountdown() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  const overlay = document.getElementById('call-countdown-overlay');
+  if (overlay) overlay.style.display = 'none';
+
+  const statusEl = document.getElementById('panic-status');
+  if (statusEl) {
+    statusEl.textContent = '🚫 ARAMA İPTAL EDİLDİ';
+    statusEl.className   = 'panic-status error';
+    setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'panic-status'; }, 4000);
+  }
 }
 
 // ══════════════════════════════════════════════════════
