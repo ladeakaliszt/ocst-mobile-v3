@@ -8,10 +8,8 @@ const SERVER_URL  = 'https://ocst-arsiv-database.up.railway.app';
 const API_KEY     = 'OCSTMLBL2020';
 const PANIC_HOLD  = 300;   // ms — 0.3 saniye
 
-// SMS ve arama numaraları
-const SMS_NUMBER     = '113';          // SMS gönderim numarası
-const CALL_NUMBER    = '05525907579';  // Test: canlıya geçince 112 yap
-const COUNTDOWN_SECS = 10;
+// 112 SMS numarası
+const SMS_NUMBER  = '113';
 
 // ── ACİL KOD TANIMLAMALARI ───────────────────────────
 const EMERGENCY_CODES = {
@@ -74,17 +72,16 @@ function parseVoiceCode(transcript) {
 }
 
 // ── STATE ─────────────────────────────────────────────
-let username       = '';
-let panicTimer     = null;
-let panicAnim      = null;
-let panicStart     = 0;
-let gpsLat         = null;
-let gpsLng         = null;
-let myCalls        = [];
-let selectedCode   = null;   // seçili acil kod
-let recognition    = null;   // SpeechRecognition instance
-let voiceActive    = false;
-let countdownTimer = null;   // arama geri sayım
+let username      = '';
+let panicTimer    = null;
+let panicAnim     = null;
+let panicStart    = 0;
+let gpsLat        = null;
+let gpsLng        = null;
+let myCalls       = [];
+let selectedCode  = null;   // seçili acil kod
+let recognition   = null;   // SpeechRecognition instance
+let voiceActive   = false;
 
 // ══════════════════════════════════════════════════════
 // BAŞLANGIÇ
@@ -96,6 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') saveName();
   });
+
+  // Benzersiz cihaz ID'si oluştur (kalıcı)
+  deviceId = localStorage.getItem('ocst_device_id');
+  if (!deviceId) {
+    deviceId = 'mob_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    localStorage.setItem('ocst_device_id', deviceId);
+  }
 });
 
 function saveName() {
@@ -117,6 +121,7 @@ function showMain() {
   document.getElementById('mob-username').textContent   = username.toUpperCase();
   renderRecentCalls();
   connectWS();
+  registerDevice();
 }
 
 function showCallForm() {
@@ -333,62 +338,13 @@ function finalizeSms(code, locStr, mapsLink, coords, lat, lng, placeName) {
 
   sendToServer(code, fullLoc, lat, lng, body);
 
-  // SMS uygulamasını aç
   const smsUri = `sms:${SMS_NUMBER}?body=${encodeURIComponent(body)}`;
   window.location.href = smsUri;
 
-  statusEl.textContent = `✅ KOD ${code} — SMS AÇILDI · ARAMA BAŞLIYOR...`;
+  statusEl.textContent = `✅ KOD ${code} — SMS UYGULAMASI AÇILDI`;
   statusEl.className   = 'panic-status sent';
   saveMyCalls({ type:'panic', title:`PANİK KOD ${code}`, location: fullLoc, createdAt: Date.now() });
-
-  // SMS açıldıktan sonra geri sayımı başlat
-  setTimeout(() => startCallCountdown(), 800);
-}
-
-// ══════════════════════════════════════════════════════
-// ARAMA GERİ SAYIMI
-// ══════════════════════════════════════════════════════
-function startCallCountdown() {
-  const overlay = document.getElementById('call-countdown-overlay');
-  const numEl   = document.getElementById('call-countdown-num');
-  const ring    = document.getElementById('call-ring');
-  const total   = 314.2; // 2πr, r=50
-
-  if (!overlay) return;
-
-  let remaining = COUNTDOWN_SECS;
-
-  overlay.style.display = 'flex';
-  numEl.textContent = remaining;
-  ring.style.strokeDashoffset = '0';
-
-  countdownTimer = setInterval(() => {
-    remaining--;
-    numEl.textContent = remaining;
-
-    const ratio = (COUNTDOWN_SECS - remaining) / COUNTDOWN_SECS;
-    ring.style.strokeDashoffset = (total * ratio).toFixed(1);
-
-    if (remaining <= 0) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-      overlay.style.display = 'none';
-      window.location.href = `tel:${CALL_NUMBER}`;
-    }
-  }, 1000);
-}
-
-function cancelCallCountdown() {
-  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-  const overlay = document.getElementById('call-countdown-overlay');
-  if (overlay) overlay.style.display = 'none';
-
-  const statusEl = document.getElementById('panic-status');
-  if (statusEl) {
-    statusEl.textContent = '🚫 ARAMA İPTAL EDİLDİ';
-    statusEl.className   = 'panic-status error';
-    setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'panic-status'; }, 4000);
-  }
+  setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'panic-status'; }, 8000);
 }
 
 // ══════════════════════════════════════════════════════
@@ -450,6 +406,100 @@ async function sendToServer(code, locStr, lat, lng, smsBody) {
     // Sunucu hatası SMS akışını engellemesin
   }
 }
+
+// ══════════════════════════════════════════════════════
+// MOBİL CİHAZ KAYIT & KONUM BUTONU
+// ══════════════════════════════════════════════════════
+
+async function registerDevice() {
+  try {
+    const res = await fetch(`${SERVER_URL}/api/mobile/register`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+      body:    JSON.stringify({ deviceId, username })
+    });
+    const data = await res.json();
+    if (data.banned) {
+      alert('Bu cihaz sisteme erişimden engellenmiştir.');
+    }
+  } catch {}
+}
+
+function toggleLocation() {
+  if (locationActive) {
+    stopLocationBroadcast();
+  } else {
+    startLocationBroadcast();
+  }
+}
+
+async function startLocationBroadcast() {
+  // Önce konum izni al
+  try {
+    const pos = await getPositionPromise();
+    locationActive = true;
+    updateLocationBtn();
+
+    // İlk konum gönder
+    await sendLocation(pos.coords.latitude, pos.coords.longitude, true);
+
+    // Sonraki güncellemeler
+    locationTimer = setInterval(async () => {
+      try {
+        const p = await getPositionPromise();
+        await sendLocation(p.coords.latitude, p.coords.longitude, true);
+      } catch {
+        // Konum alınamazsa devam et
+      }
+    }, LOC_INTERVAL_MS);
+
+  } catch (err) {
+    alert('Konum izni verilmedi veya alınamadı. Lütfen tarayıcı izinlerini kontrol edin.');
+  }
+}
+
+function stopLocationBroadcast() {
+  locationActive = false;
+  if (locationTimer) { clearInterval(locationTimer); locationTimer = null; }
+  updateLocationBtn();
+  // Sunucuya konum kapatıldı bildir (blip gizlenir)
+  sendLocation(null, null, false).catch(() => {});
+}
+
+async function sendLocation(lat, lng, active) {
+  try {
+    await fetch(`${SERVER_URL}/api/mobile/location`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+      body:    JSON.stringify({ deviceId, lat, lng, active })
+    });
+  } catch {}
+}
+
+function updateLocationBtn() {
+  const btn     = document.getElementById('loc-btn');
+  const statusEl = document.getElementById('loc-status');
+  if (!btn) return;
+  if (locationActive) {
+    btn.classList.add('loc-active');
+    btn.textContent = '📍 KONUM AÇIK';
+    if (statusEl) { statusEl.textContent = '● PC haritasında görünüyorsunuz'; statusEl.style.color = '#00cc44'; }
+  } else {
+    btn.classList.remove('loc-active');
+    btn.textContent = '📍 KONUM';
+    if (statusEl) { statusEl.textContent = ''; }
+  }
+}
+
+// Sayfa kapanırken konumu kapat
+window.addEventListener('beforeunload', () => {
+  if (locationActive) {
+    navigator.sendBeacon(
+      `${SERVER_URL}/api/mobile/location`,
+      JSON.stringify({ deviceId, lat: null, lng: null, active: false })
+    );
+  }
+});
 
 // ══════════════════════════════════════════════════════
 // GPS
