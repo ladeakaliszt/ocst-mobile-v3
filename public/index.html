@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<!-- ══ KULLANICI ADI EKRANI ══ -->
+<!-- KULLANICI ADI EKRANI -->
 <div id="screen-name">
   <div class="name-box">
     <div class="name-logo">⬡</div>
@@ -24,15 +24,13 @@
   </div>
 </div>
 
-<!-- ══ ANA EKRAN ══ -->
+<!-- ANA EKRAN -->
 <div id="screen-main" style="display:none">
-
   <div class="mob-header">
     <div class="mob-logo">⬡ OCST</div>
     <div class="mob-user" id="mob-username"></div>
   </div>
 
-  <!-- KONUM BUTONU -->
   <div class="loc-section">
     <button id="loc-btn" class="loc-btn" onclick="toggleLocation()">📍 KONUM</button>
     <div id="loc-status" class="loc-status"></div>
@@ -43,7 +41,7 @@
     <span id="mob-ws-label" style="font-size:10px;letter-spacing:1px">BAĞLANIYOR...</span>
   </div>
 
-  <!-- PANİK BUTONU -->
+  <!-- PANİK -->
   <div class="panic-section">
     <div class="panic-label">ACİL DURUM</div>
     <button id="panic-btn" class="panic-btn" onpointerdown="startPanicPress()" onpointerup="cancelPanicPress()" onpointerleave="cancelPanicPress()">
@@ -68,36 +66,15 @@
     <div class="call-section-title">[ ACİL KOD SEÇ — OPSİYONEL ]</div>
     <div class="code-hint">Seçiliyse: direkt SMS · Seçili değilse: sesli komut</div>
     <div class="code-grid">
-      <button class="code-btn" data-code="90" onclick="toggleCode(this, '90')">
-        <span class="code-num">90</span>
-        <span class="code-lbl">(Kaza)</span>
-      </button>
-      <button class="code-btn" data-code="91" onclick="toggleCode(this, '91')">
-        <span class="code-num">91</span>
-        <span class="code-lbl">(Kavga)</span>
-      </button>
-      <button class="code-btn" data-code="92" onclick="toggleCode(this, '92')">
-        <span class="code-num">92</span>
-        <span class="code-lbl">(Kesici D.A.)</span>
-      </button>
-      <button class="code-btn" data-code="93" onclick="toggleCode(this, '93')">
-        <span class="code-num">93</span>
-        <span class="code-lbl">(A. Silah)</span>
-      </button>
-      <button class="code-btn" data-code="94" onclick="toggleCode(this, '94')">
-        <span class="code-num">94</span>
-        <span class="code-lbl">(Çatışma)</span>
-      </button>
-      <button class="code-btn" data-code="95" onclick="toggleCode(this, '95')">
-        <span class="code-num">95</span>
-        <span class="code-lbl">(Bayılma)</span>
-      </button>
+      <button class="code-btn" data-code="90" onclick="toggleCode(this,'90')"><span class="code-num">90</span><span class="code-lbl">(Kaza)</span></button>
+      <button class="code-btn" data-code="91" onclick="toggleCode(this,'91')"><span class="code-num">91</span><span class="code-lbl">(Kavga)</span></button>
+      <button class="code-btn" data-code="92" onclick="toggleCode(this,'92')"><span class="code-num">92</span><span class="code-lbl">(Kesici D.A.)</span></button>
+      <button class="code-btn" data-code="93" onclick="toggleCode(this,'93')"><span class="code-num">93</span><span class="code-lbl">(A. Silah)</span></button>
+      <button class="code-btn" data-code="94" onclick="toggleCode(this,'94')"><span class="code-num">94</span><span class="code-lbl">(Çatışma)</span></button>
+      <button class="code-btn" data-code="95" onclick="toggleCode(this,'95')"><span class="code-num">95</span><span class="code-lbl">(Bayılma)</span></button>
     </div>
     <div class="code-grid-single">
-      <button class="code-btn code-btn-99" data-code="99" onclick="toggleCode(this, '99')">
-        <span class="code-num">99</span>
-        <span class="code-lbl">(Takip)</span>
-      </button>
+      <button class="code-btn code-btn-99" data-code="99" onclick="toggleCode(this,'99')"><span class="code-num">99</span><span class="code-lbl">(Takip)</span></button>
     </div>
     <div id="selected-code-label" class="selected-code-label"></div>
   </div>
@@ -105,9 +82,7 @@
   <!-- SES TANIMA OVERLAY -->
   <div id="voice-overlay" class="voice-overlay" style="display:none">
     <div class="voice-box">
-      <div class="voice-wave">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
+      <div class="voice-wave"><span></span><span></span><span></span><span></span><span></span></div>
       <div class="voice-title">DİNLİYOR...</div>
       <div class="voice-sub">Acil kodunuzu söyleyin<br><strong>90 ile 99 arası</strong></div>
       <div id="voice-transcript" class="voice-transcript"></div>
@@ -118,9 +93,7 @@
   <!-- NORMAL ÇAĞRI -->
   <div class="call-section">
     <div class="call-section-title">[ ÇAĞRI YÖNETİMİ ]</div>
-    <button class="call-new-btn" onclick="showCallForm()">
-      <span>📞</span> Çağrı Gönder
-    </button>
+    <button class="call-new-btn" onclick="showCallForm()"><span>📞</span> Çağrı Gönder</button>
   </div>
 
   <!-- SON ÇAĞRILARIM -->
@@ -128,31 +101,19 @@
     <div class="call-section-title">[ SON ÇAĞRILARIM ]</div>
     <div id="recent-calls"></div>
   </div>
-
 </div>
 
-<!-- ══ ÇAĞRI FORMU ══ -->
+<!-- ÇAĞRI FORMU -->
 <div id="screen-call" style="display:none">
   <div class="mob-header">
     <button class="back-btn" onclick="showMain()">◄ GERİ</button>
     <div class="mob-logo">YENİ ÇAĞRI</div>
   </div>
-
   <div class="call-form">
-    <div class="cf-field">
-      <label>ÇAĞRI BAŞLIĞI <span class="req">*</span></label>
-      <input type="text" id="cf-title" placeholder="Kısa ve net başlık..." autocomplete="off" spellcheck="false" maxlength="100">
-    </div>
-    <div class="cf-field">
-      <label>ÇAĞRI DETAYI</label>
-      <textarea id="cf-detail" placeholder="Detaylı açıklama..." spellcheck="false"></textarea>
-    </div>
-    <div class="cf-field">
-      <label>KONUM</label>
-      <div class="cf-location-row">
-        <input type="text" id="cf-location" placeholder="Konum yazın veya GPS alın..." spellcheck="false">
-        <button class="cf-gps-btn" onclick="getGPS('cf')">📍 GPS</button>
-      </div>
+    <div class="cf-field"><label>ÇAĞRI BAŞLIĞI <span class="req">*</span></label><input type="text" id="cf-title" placeholder="Kısa ve net başlık..." autocomplete="off" spellcheck="false" maxlength="100"></div>
+    <div class="cf-field"><label>ÇAĞRI DETAYI</label><textarea id="cf-detail" placeholder="Detaylı açıklama..." spellcheck="false"></textarea></div>
+    <div class="cf-field"><label>KONUM</label>
+      <div class="cf-location-row"><input type="text" id="cf-location" placeholder="Konum yazın veya GPS alın..." spellcheck="false"><button class="cf-gps-btn" onclick="getGPS('cf')">📍 GPS</button></div>
       <div id="cf-gps-status" class="gps-status"></div>
     </div>
     <div id="cf-error" class="cf-error"></div>
@@ -160,7 +121,7 @@
   </div>
 </div>
 
-<!-- ══ GÖNDERİLDİ EKRANI ══ -->
+<!-- GÖNDERİLDİ -->
 <div id="screen-sent" style="display:none">
   <div class="sent-box">
     <div class="sent-icon">✅</div>
@@ -170,55 +131,64 @@
   </div>
 </div>
 
-<!-- ══ YER SEÇİCİ OVERLAY ══ -->
-<div id="place-picker-overlay" style="display:none; position:fixed; inset:0; z-index:600; background:rgba(4,10,20,.95); flex-direction:column; align-items:center; justify-content:center;">
-  <div style="width:100%; max-width:400px; padding:20px; display:flex; flex-direction:column; gap:12px;">
-
-    <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid #1a3a5a; padding-bottom:12px;">
+<!-- YER SEÇİCİ OVERLAY -->
+<div id="place-picker-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(4,10,20,.95);flex-direction:column;align-items:center;justify-content:center;">
+  <div style="width:100%;max-width:400px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid #1a3a5a;padding-bottom:12px;">
       <span style="font-size:20px;">📍</span>
-      <div>
-        <div style="font-size:13px; color:#ffaa00; letter-spacing:2px; font-family:'Share Tech Mono',monospace;">DİREKT KONUM SEÇİNİZ</div>
-        <div style="font-size:9px; color:#6a8aaa; letter-spacing:1px; font-family:'Share Tech Mono',monospace; margin-top:3px;">Bulunduğunuz yeri seçin veya Hiçbiri'ne basın</div>
-      </div>
+      <div><div style="font-size:13px;color:#ffaa00;letter-spacing:2px;font-family:'Share Tech Mono',monospace;">DİREKT KONUM SEÇİNİZ</div>
+        <div style="font-size:9px;color:#6a8aaa;letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-top:3px;">Bulunduğunuz yeri seçin veya Hiçbiri'ne basın</div></div>
     </div>
-
-    <div id="place-picker-list" style="display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto;"></div>
-
+    <div id="place-picker-list" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;"></div>
   </div>
 </div>
 
-<!-- ══ ARAMA GERİ SAYIM OVERLAY ══ -->
-<div id="call-countdown-overlay" style="display:none; position:fixed; inset:0; z-index:700; background:rgba(4,10,20,.96); flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(6px);">
-  <div style="width:90%; max-width:320px; background:rgba(10,20,40,.98); border:1px solid #ff4444; box-shadow:0 0 60px rgba(255,68,68,.25); padding:36px 28px; display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center; font-family:'Share Tech Mono',monospace;">
-
-    <div style="font-size:11px; color:#ff4444; letter-spacing:4px;">ACİL ARAMA</div>
-
-    <!-- Geri sayım halkası -->
-    <div style="position:relative; width:120px; height:120px;">
+<!-- ARAMA GERİ SAYIM OVERLAY -->
+<div id="call-countdown-overlay" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(4,10,20,.96);flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+  <div style="width:90%;max-width:320px;background:rgba(10,20,40,.98);border:1px solid #ff4444;box-shadow:0 0 60px rgba(255,68,68,.25);padding:36px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center;font-family:'Share Tech Mono',monospace;">
+    <div style="font-size:11px;color:#ff4444;letter-spacing:4px;">ACİL ARAMA</div>
+    <div style="position:relative;width:120px;height:120px;">
       <svg viewBox="0 0 120 120" style="width:120px;height:120px;position:absolute;inset:0;">
         <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,68,68,0.15)" stroke-width="6"/>
-        <circle id="call-ring" cx="60" cy="60" r="50" fill="none" stroke="#ff4444" stroke-width="6"
-          stroke-dasharray="314.2" stroke-dashoffset="0" stroke-linecap="round"
-          transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s linear; filter:drop-shadow(0 0 6px rgba(255,68,68,.8));"/>
+        <circle id="call-ring" cx="60" cy="60" r="50" fill="none" stroke="#ff4444" stroke-width="6" stroke-dasharray="314.2" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 6px rgba(255,68,68,.8));"/>
       </svg>
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;">
-        <div style="font-size:36px; line-height:1;">📞</div>
-        <div id="call-countdown-num" style="font-size:22px; color:#ff4444; font-weight:bold; letter-spacing:2px; line-height:1;">10</div>
-      </div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;"><div style="font-size:36px;line-height:1;">📞</div><div id="call-countdown-num" style="font-size:22px;color:#ff4444;font-weight:bold;letter-spacing:2px;line-height:1;">10</div></div>
+    </div>
+    <div style="font-size:13px;color:#c8d8e8;letter-spacing:1px;line-height:1.8;"><span id="call-countdown-number" style="color:#ffaa00;font-size:15px;letter-spacing:2px;">0552 590 75 79</span><br><span style="font-size:10px;color:#6a8aaa;">aranacak</span></div>
+    <div style="font-size:10px;color:#6a8aaa;letter-spacing:1px;line-height:1.6;">SMS gönderildi. Aramayı iptal etmek için<br>aşağıya basın.</div>
+    <button onclick="cancelCallCountdown()" style="width:100%;background:transparent;border:1px solid #6a8aaa;color:#6a8aaa;font-family:'Share Tech Mono',monospace;font-size:13px;padding:14px;cursor:pointer;letter-spacing:2px;margin-top:4px;">İPTAL ET</button>
+  </div>
+</div>
+
+<!-- ══ PC'DEN GELEN SMS DISPATCH OVERLAY ══ -->
+<div id="dispatch-prompt-overlay" style="display:none;position:fixed;inset:0;z-index:800;background:rgba(4,10,20,.97);flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
+  <div style="width:92%;max-width:380px;background:rgba(8,20,50,.98);border:2px solid #4a9eff;box-shadow:0 0 60px rgba(74,158,255,.3);padding:0;overflow:hidden;font-family:'Share Tech Mono',monospace;">
+
+    <!-- Başlık -->
+    <div style="background:linear-gradient(180deg,#1a3060,#0d1a3a);padding:14px 18px;border-bottom:1px solid #2a4a7a;">
+      <div style="font-size:10px;color:#4a9eff;letter-spacing:3px;margin-bottom:4px;">📡 MERKEZ'DEN ÇAĞRI</div>
+      <div id="dp-title-text" style="font-size:14px;color:#c8d8e8;letter-spacing:1px;line-height:1.4;">—</div>
     </div>
 
-    <div style="font-size:13px; color:#c8d8e8; letter-spacing:1px; line-height:1.8;">
-      <span id="call-countdown-number" style="color:#ffaa00; font-size:15px; letter-spacing:2px;">0552 590 75 79</span><br>
-      <span style="font-size:10px; color:#6a8aaa;">aranacak</span>
+    <!-- SMS önizleme -->
+    <div style="padding:14px 18px;border-bottom:1px solid #1a3a5a;">
+      <div style="font-size:9px;color:#6a8aaa;letter-spacing:2px;margin-bottom:6px;">SMS İÇERİĞİ (113)</div>
+      <div id="dp-sms-preview" style="font-size:10px;color:#8aaccc;line-height:1.7;word-break:break-word;max-height:120px;overflow-y:auto;"></div>
     </div>
 
-    <div style="font-size:10px; color:#6a8aaa; letter-spacing:1px; line-height:1.6;">
-      SMS gönderildi. Aramayı iptal etmek için<br>aşağıya basın.
+    <!-- Butonlar -->
+    <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;">
+      <button id="dp-send-btn" style="width:100%;background:rgba(74,158,255,.2);border:2px solid #4a9eff;color:#fff;font-family:'Share Tech Mono',monospace;font-size:15px;padding:16px;cursor:pointer;letter-spacing:3px;letter-spacing:2px;">
+        📨 SMS GÖNDER
+      </button>
+      <button id="dp-cancel-btn" style="width:100%;background:transparent;border:1px solid #2a3a5a;color:#6a8aaa;font-family:'Share Tech Mono',monospace;font-size:12px;padding:12px;cursor:pointer;letter-spacing:1px;">
+        İPTAL
+      </button>
     </div>
 
-    <button onclick="cancelCallCountdown()" style="width:100%; background:transparent; border:1px solid #6a8aaa; color:#6a8aaa; font-family:'Share Tech Mono',monospace; font-size:13px; padding:14px; cursor:pointer; letter-spacing:2px; margin-top:4px;">
-      İPTAL ET
-    </button>
+    <div style="padding:0 18px 14px;font-size:9px;color:#2a4a6a;letter-spacing:.5px;text-align:center;line-height:1.6;">
+      SMS GÖNDER'e bastığınızda SMS uygulaması açılır.<br>Göndermeyi onaylamanız gerekir.
+    </div>
   </div>
 </div>
 
