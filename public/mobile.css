@@ -399,48 +399,45 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); }
 
-/* ── GEMİNİ MESAJ BALONLARI ── */
-.gm-ai {
-  align-self: flex-start;
-  background: rgba(255,68,68,.1);
-  border: 1px solid rgba(255,68,68,.3);
-  color: #ffaaaa;
+/* ── YER SEÇİCİ ── */
+.pp-item {
+  width: 100%;
+  background: rgba(10,25,50,.6);
+  border: 1px solid #1a3a5a;
+  color: var(--text);
   font-family: var(--mono);
-  font-size: 13px;
-  padding: 10px 14px;
-  max-width: 85%;
-  line-height: 1.5;
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+  transition: all .15s;
+}
+.pp-item:active {
+  background: rgba(255,170,0,.15);
+  border-color: var(--amber);
+}
+.pp-item-type {
+  font-size: 9px;
+  color: var(--amber);
+  letter-spacing: 2px;
+}
+.pp-item-name {
+  font-size: 14px;
+  color: var(--text);
   letter-spacing: .5px;
 }
-
-.gm-user {
-  align-self: flex-end;
-  background: rgba(74,158,255,.1);
-  border: 1px solid rgba(74,158,255,.3);
-  color: #c8d8e8;
-  font-family: var(--mono);
-  font-size: 13px;
-  padding: 10px 14px;
-  max-width: 85%;
-  line-height: 1.5;
-  letter-spacing: .5px;
+.pp-item-none {
+  border-color: #2a3a4a;
+  margin-top: 4px;
 }
-
-/* Dalga animasyonu */
-.gm-wave {
-  display: inline-block;
-  width: 4px;
-  border-radius: 2px;
-  background: #ff4444;
-  animation: gm-wave-bar .8s ease-in-out infinite;
+.pp-item-none .pp-item-name {
+  color: var(--dim);
+  font-size: 12px;
 }
-.gm-wave:nth-child(1) { height: 8px;  animation-delay: 0s; }
-.gm-wave:nth-child(2) { height: 16px; animation-delay: .1s; }
-.gm-wave:nth-child(3) { height: 24px; animation-delay: .2s; }
-.gm-wave:nth-child(4) { height: 16px; animation-delay: .1s; }
-.gm-wave:nth-child(5) { height: 8px;  animation-delay: 0s; }
-
-@keyframes gm-wave-bar {
-  0%,100% { transform: scaleY(1); opacity: .5; }
-  50%      { transform: scaleY(1.6); opacity: 1; }
+.pp-item-none:active {
+  background: rgba(106,138,170,.1);
+  border-color: var(--dim);
 }

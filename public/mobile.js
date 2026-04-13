@@ -198,11 +198,11 @@ function cancelPanicPress() {
 
 async function onPanicFired() {
   if (selectedCode) {
-    // Kod seçili → konum al, direkt SMS
+    // Kod seçili → konum al, yakın yer kontrol et, SMS
     await sendEmergencySms(selectedCode);
   } else {
-    // Kod seçili değil → Gemini sesli asistan
-    openGeminiAssistant();
+    // Kod seçili değil → sesli kod tanıma
+    startVoiceRecognition();
   }
 }
 
@@ -304,20 +304,38 @@ async function sendEmergencySms(code) {
     locStr = 'Konum izni verilmedi';
   }
 
-  // SMS gövdesi
-  const body = buildSmsBody(code, locStr, mapsLink, coords);
+  // Yakında yer var mı kontrol et (15m)
+  statusEl.textContent = '🗺️ YAKINDA YER ARANIYOR...';
+  let nearbyPlaces = [];
+  if (lat && lng) {
+    nearbyPlaces = await getNearbyPlaces(lat, lng, 15);
+  }
 
-  // PC sunucusuna da gönder
-  sendToServer(code, locStr, lat, lng, body);
+  if (nearbyPlaces.length > 0) {
+    // Yer listesi göster — seçim yapılınca SMS gönderilecek
+    showPlacePicker(code, locStr, mapsLink, coords, lat, lng, nearbyPlaces);
+    statusEl.textContent = '';
+    statusEl.className   = 'panic-status';
+  } else {
+    // Yakında yer yok — direkt SMS gönder
+    finalizeSms(code, locStr, mapsLink, coords, lat, lng, null);
+  }
+}
 
-  // SMS uygulamasını aç
+// SMS'i tamamla ve gönder (yer seçimiyle veya seçimsiz)
+function finalizeSms(code, locStr, mapsLink, coords, lat, lng, placeName) {
+  const statusEl = document.getElementById('panic-status');
+  const fullLoc  = placeName ? `${placeName}, ${locStr}` : locStr;
+  const body     = buildSmsBody(code, fullLoc, mapsLink, coords);
+
+  sendToServer(code, fullLoc, lat, lng, body);
+
   const smsUri = `sms:${SMS_NUMBER}?body=${encodeURIComponent(body)}`;
   window.location.href = smsUri;
 
-  // Status güncelle
   statusEl.textContent = `✅ KOD ${code} — SMS UYGULAMASI AÇILDI`;
   statusEl.className   = 'panic-status sent';
-  saveMyCalls({ type:'panic', title:`PANİK KOD ${code}`, location: locStr, createdAt: Date.now() });
+  saveMyCalls({ type:'panic', title:`PANİK KOD ${code}`, location: fullLoc, createdAt: Date.now() });
   setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'panic-status'; }, 8000);
 }
 
@@ -512,302 +530,94 @@ function escH(s) {
 }
 
 // ══════════════════════════════════════════════════════
-// GEMİNİ SESLİ ACİL ASISTAN
+// YAKINDA YER SORGULAMA (Overpass API — OpenStreetMap)
 // ══════════════════════════════════════════════════════
 
-// Gemini key artık sunucuda — frontend görmez
-const GEMINI_URL = '/api/gemini';
-
-const GEMINI_SYSTEM = `Sen bir acil durum asistanısın. Kullanıcının acil durumunu hızla anlayıp 112 SMS mesajı hazırlarsın.
-
-KURALLAR:
-- İlk mesajın her zaman sadece şu olsun: "Acil durum nedir?"
-- Maksimum 3 kısa soru sor, her soru tek cümle, Türkçe
-- Yeterli bilgi alınca SMS_HAZIR etiketiyle JSON döndür
-
-ACİL KOD SINIFLANDIRMASI:
-Trafik kazası → 90, tek yaralı → 90A, 3+ yaralı → 90B
-Kavga → 91, yaralı → 91A, kalabalık → 91B
-Kesici alet → 92, ateşli silah → 93, silahlı çatışma → 94
-Bayılma/bilinç kaybı → 95, takip → 99
-
-SMS FORMATLARI (kullanıcı ağzından, birinci şahıs):
-90:  "Acil durum. Trafik kazası yaşandı. $KONUM"
-90A: "Acil durum. Trafik kazası yaşandı. Tek yaralı var. $KONUM"
-90B: "Acil durum. Büyük trafik kazası yaşandı. 3'ten fazla yaralı var. $KONUM"
-91:  "Acil durum. Burada kavga yaşanıyor. $KONUM"
-91A: "Acil durum. Kavga yaşanıyor, yaralı var. $KONUM"
-91B: "Acil durum. Kalabalık grup kavga ediyor. $KONUM"
-92:  "Acil durum. Kavga var, taraflarda kesici alet. $KONUM"
-93:  "Acil durum. Kavga var, taraflarda ateşli silah. $KONUM"
-94:  "Acil durum. Silahlı çatışma yaşanıyor. Tehlikedeyiz. $KONUM"
-95:  "Acil durum. Birisi bilincini kaybetti. Acil sağlık gerekiyor. $KONUM"
-99:  "Acil durum. Takip ediliyorum, tehlikedeyim. Polis gerekiyor. $KONUM"
-
-Yeterli bilgi aldığında SADECE şu JSON formatını döndür, başka hiçbir şey yazma:
-SMS_HAZIR:{"kod":"91A","sms":"Acil durum. Kavga var, yaralı var. $KONUM","ekip_notu":"Kavga, 2 kişi, biri yaralı"}`;
-
-// State
-let geminiHistory  = [];
-let geminiActive   = false;
-let geminiSpeaking = false;
-let geminiRec      = null;
-let geminiLat      = null;
-let geminiLng      = null;
-let geminiLocStr   = '';
-
-// ── ASISTANI AÇ ───────────────────────────────────────
-async function openGeminiAssistant() {
-  geminiHistory  = [];
-  geminiActive   = true;
-  geminiSpeaking = false;
-  geminiLat      = null;
-  geminiLng      = null;
-  geminiLocStr   = '';
-
-  // Overlay'i göster
-  document.getElementById('gemini-overlay').style.display = 'flex';
-  document.getElementById('gemini-msgs').innerHTML = '';
-  document.getElementById('gemini-status').textContent = '';
-  document.getElementById('gemini-input-row').style.display = 'none';
-
-  // Arka planda konum al
-  getGeminiLocation();
-
-  // Panik butonu etkileşimi zaten kullanıcı aksiyonu sayılır
-  // Direkt sesli başlat — başka butona gerek yok
-  appendGeminiMsg('ai', 'Acil durum nedir?');
-  document.getElementById('gemini-status').textContent = '🎙️ Dinleniyor...';
-  speak('Acil durum nedir?', () => startGeminiListening());
-}
-
-// Artık kullanılmıyor, ama kalsın
-function geminiStart() {
-  speak('Acil durum nedir?', () => startGeminiListening());
-}
-
-function closeGeminiAssistant() {
-  geminiActive   = false;
-  geminiSpeaking = false;
-  stopGeminiListening();
-  window.speechSynthesis && window.speechSynthesis.cancel();
-  document.getElementById('gemini-overlay').style.display = 'none';
-}
-
-// ── KONUM AL ─────────────────────────────────────────
-async function getGeminiLocation() {
-  try {
-    const pos  = await getPositionPromise();
-    geminiLat  = pos.coords.latitude;
-    geminiLng  = pos.coords.longitude;
-    geminiLocStr = await reverseGeocode(geminiLat, geminiLng);
-  } catch {
-    geminiLocStr = 'Konum alınamadı';
-  }
-}
-
-// ── SES TANIMA ────────────────────────────────────────
-function startGeminiListening() {
-  if (!geminiActive || geminiSpeaking) return;
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec) {
-    document.getElementById('gemini-status').textContent = '⚠️ Mikrofon desteklenmiyor, yazarak devam edin';
-    document.getElementById('gemini-input-row').style.display = 'flex';
-    return;
-  }
-
-  geminiRec = new SpeechRec();
-  geminiRec.lang = 'tr-TR';
-  geminiRec.continuous = false;
-  geminiRec.interimResults = true;
-
-  const statusEl = document.getElementById('gemini-status');
-  statusEl.textContent = '🎙️ Dinleniyor...';
-
-  geminiRec.onresult = (e) => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += t;
-      else interim += t;
-    }
-    const current = (final || interim).trim();
-    statusEl.textContent = current ? `"${current}"` : '🎙️ Dinleniyor...';
-
-    if (final.trim()) {
-      stopGeminiListening();
-      handleUserMessage(final.trim());
-    }
-  };
-
-  geminiRec.onerror = () => {
-    statusEl.textContent = '⚠️ Ses alınamadı, tekrar deneyin';
-    setTimeout(() => { if (geminiActive && !geminiSpeaking) startGeminiListening(); }, 1500);
-  };
-
-  geminiRec.onend = () => {
-    if (geminiActive && !geminiSpeaking) {
-      setTimeout(() => startGeminiListening(), 500);
-    }
-  };
-
-  try { geminiRec.start(); } catch {}
-}
-
-function stopGeminiListening() {
-  if (geminiRec) { try { geminiRec.stop(); } catch {} geminiRec = null; }
-}
-
-// ── KULLANICI MESAJI ──────────────────────────────────
-async function handleUserMessage(text) {
-  if (!geminiActive) return;
-  appendGeminiMsg('user', text);
-  document.getElementById('gemini-status').textContent = '⏳ Değerlendiriliyor...';
-
-  // Gemini'ya gönder
-  const reply = await askGemini(text);
-  if (!reply) {
-    document.getElementById('gemini-status').textContent = '❌ Bağlantı hatası';
-    setTimeout(() => startGeminiListening(), 2000);
-    return;
-  }
-
-  // SMS_HAZIR kontrolü
-  if (reply.includes('SMS_HAZIR:')) {
-    try {
-      const jsonStr = reply.split('SMS_HAZIR:')[1].trim();
-      const parsed  = JSON.parse(jsonStr);
-      handleGeminiAction(parsed);
-      return;
-    } catch {}
-  }
-
-  // Normal soru/cevap
-  appendGeminiMsg('ai', reply);
-  speak(reply, () => startGeminiListening());
-}
-
-// ── GEMİNİ API ───────────────────────────────────────
-async function askGemini(userText) {
-  geminiHistory.push({ role: 'user', parts: [{ text: userText }] });
+async function getNearbyPlaces(lat, lng, radiusM) {
+  // Overpass: 15m çevresinde isimli bina, dükkan, apartman ara
+  const query = `
+    [out:json][timeout:6];
+    (
+      node(around:${radiusM},${lat},${lng})[name];
+      way(around:${radiusM},${lat},${lng})[name][building];
+      way(around:${radiusM},${lat},${lng})[name][shop];
+      way(around:${radiusM},${lat},${lng})[name][amenity];
+    );
+    out center 10;
+  `;
 
   try {
-    const res  = await fetch(GEMINI_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        system_instruction: { parts: [{ text: GEMINI_SYSTEM }] },
-        contents: geminiHistory,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 300 }
-      })
+    const res  = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body:   query
     });
-    const data  = await res.json();
-    if (data.error) { console.error('Gemini hata:', data.error); return null; }
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    if (reply) geminiHistory.push({ role: 'model', parts: [{ text: reply }] });
-    return reply;
-  } catch (e) {
-    console.error('Gemini fetch hata:', e);
-    return null;
+    const data = await res.json();
+    const seen = new Set();
+    const places = [];
+
+    for (const el of (data.elements || [])) {
+      const name = el.tags && el.tags['name'];
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+
+      // Tür etiketi
+      const tags = el.tags || {};
+      let type = '';
+      if (tags.building === 'apartments' || tags.building === 'residential') type = 'Apartman';
+      else if (tags.building)  type = 'Bina';
+      else if (tags.shop)      type = 'İşletme';
+      else if (tags.amenity)   type = 'Tesis';
+      else if (tags.office)    type = 'Ofis';
+
+      places.push({ name, type });
+      if (places.length >= 6) break;
+    }
+    return places;
+  } catch {
+    return [];
   }
 }
 
-// ── ACİL AKSİYON ─────────────────────────────────────
-async function handleGeminiAction(parsed) {
-  const { kod, sms, ekip_notu } = parsed;
+// ══════════════════════════════════════════════════════
+// YER SEÇİCİ OVERLAY
+// ══════════════════════════════════════════════════════
 
-  // Konum henüz alınmadıysa bekle
-  if (!geminiLocStr) {
-    document.getElementById('gemini-status').textContent = '📍 Konum alınıyor...';
-    await new Promise(r => setTimeout(r, 2000));
-  }
+let _pickerCode, _pickerLoc, _pickerMaps, _pickerCoords, _pickerLat, _pickerLng;
 
-  const coords   = (geminiLat && geminiLng) ? `${geminiLat.toFixed(6)}, ${geminiLng.toFixed(6)}` : 'N/A';
-  const mapsLink = (geminiLat && geminiLng) ? `https://maps.google.com/?q=${geminiLat},${geminiLng}` : '';
-  const locFull  = `Konum: ${geminiLocStr}. Koordinat: ${coords}. Harita: ${mapsLink}`;
-  const smsFinal = sms.replace('$KONUM', locFull);
+function showPlacePicker(code, locStr, mapsLink, coords, lat, lng, places) {
+  _pickerCode   = code;
+  _pickerLoc    = locStr;
+  _pickerMaps   = mapsLink;
+  _pickerCoords = coords;
+  _pickerLat    = lat;
+  _pickerLng    = lng;
 
-  // Onay mesajı göster
-  const aiMsg = `Durumu anladım. ${ekip_notu || ''}. Ekibe bildiriyorum ve 112 SMS hazırlıyorum.`;
-  appendGeminiMsg('ai', aiMsg);
-  speak(aiMsg, async () => {
-    closeGeminiAssistant();
+  const overlay = document.getElementById('place-picker-overlay');
+  const list    = document.getElementById('place-picker-list');
 
-    // Konuşma transcript'ini düzenle
-    const transcript = geminiHistory.map(m => {
-      const rol  = m.role === 'user' ? username.toUpperCase() : 'ASİSTAN';
-      const text = m.parts?.[0]?.text || '';
-      return `[${rol}]: ${text}`;
-    }).join('\n');
+  // Seçenekleri oluştur
+  list.innerHTML = places.map((p, i) => `
+    <button class="pp-item" onclick="selectPlace(${i})">
+      <span class="pp-item-type">${p.type || 'Yer'}</span>
+      <span class="pp-item-name">${escH(p.name)}</span>
+    </button>
+  `).join('') + `
+    <button class="pp-item pp-item-none" onclick="selectPlace(-1)">
+      <span class="pp-item-name">Hiçbiri</span>
+    </button>
+  `;
 
-    // Ekibe gönder (SMS metni + tam transcript)
-    const detailFull = `SMS METNI:\n${smsFinal}\n\n--- KONUŞMA TRANSCRİPTİ ---\n${transcript}`;
-    try {
-      await fetch(`${SERVER_URL}/api/calls`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-        body:    JSON.stringify({
-          type:     'panic',
-          title:    `🚨 GEMİNİ — KOD ${kod}`,
-          detail:   detailFull,
-          location: geminiLocStr,
-          lat:      geminiLat,
-          lng:      geminiLng,
-          author:   username,
-          code:     kod
-        })
-      });
-    } catch {}
-
-    // SMS aç
-    saveMyCalls({ type:'panic', title:`GEMİNİ KOD ${kod}`, location: geminiLocStr, createdAt: Date.now() });
-    window.location.href = `sms:${SMS_NUMBER}?body=${encodeURIComponent(smsFinal)}`;
-  });
+  // Yerleri data olarak sakla
+  overlay.dataset.places = JSON.stringify(places);
+  overlay.style.display  = 'flex';
 }
 
-// ── SES OKUMA (TTS) ───────────────────────────────────
-function speak(text, onEnd) {
-  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
-  window.speechSynthesis.cancel();
-  geminiSpeaking = true;
+function selectPlace(idx) {
+  const overlay = document.getElementById('place-picker-overlay');
+  overlay.style.display = 'none';
 
-  const utt  = new SpeechSynthesisUtterance(text);
-  utt.lang   = 'tr-TR';
-  utt.rate   = 1.1;
-  utt.pitch  = 1;
+  const places    = JSON.parse(overlay.dataset.places || '[]');
+  const placeName = idx >= 0 ? places[idx]?.name : null;
 
-  // Türkçe ses seç
-  const voices = window.speechSynthesis.getVoices();
-  const trVoice = voices.find(v => v.lang.startsWith('tr'));
-  if (trVoice) utt.voice = trVoice;
-
-  utt.onend = () => {
-    geminiSpeaking = false;
-    onEnd && onEnd();
-  };
-  utt.onerror = () => {
-    geminiSpeaking = false;
-    onEnd && onEnd();
-  };
-
-  window.speechSynthesis.speak(utt);
-}
-
-// ── YAZARAK GİRİŞ (fallback) ─────────────────────────
-function geminiSendText() {
-  const input = document.getElementById('gemini-text-input');
-  const text  = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  handleUserMessage(text);
-}
-
-// ── MESAJ KUTUSU ─────────────────────────────────────
-function appendGeminiMsg(role, text) {
-  const el   = document.getElementById('gemini-msgs');
-  const div  = document.createElement('div');
-  div.className = role === 'ai' ? 'gm-ai' : 'gm-user';
-  div.textContent = text;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
+  finalizeSms(_pickerCode, _pickerLoc, _pickerMaps, _pickerCoords, _pickerLat, _pickerLng, placeName);
 }

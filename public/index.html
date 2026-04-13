@@ -164,40 +164,19 @@
   </div>
 </div>
 
-<!-- ══ GEMİNİ ACİL ASISTAN OVERLAY ══ -->
-<div id="gemini-overlay" style="display:none; position:fixed; inset:0; z-index:600; background:rgba(4,10,20,.96); display:none; align-items:center; justify-content:center; flex-direction:column;">
-  <div style="width:100%; max-width:400px; height:100%; display:flex; flex-direction:column; padding:16px; gap:12px;">
+<!-- ══ YER SEÇİCİ OVERLAY ══ -->
+<div id="place-picker-overlay" style="display:none; position:fixed; inset:0; z-index:600; background:rgba(4,10,20,.95); flex-direction:column; align-items:center; justify-content:center;">
+  <div style="width:100%; max-width:400px; padding:20px; display:flex; flex-direction:column; gap:12px;">
 
-    <!-- Başlık -->
-    <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid #1a3a5a;">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:20px;">🚨</span>
-        <div>
-          <div style="font-size:13px; color:#ff4444; letter-spacing:2px;">ACİL ASISTAN</div>
-          <div style="font-size:9px; color:#6a8aaa; letter-spacing:1px;">Yapay Zeka Destekli</div>
-        </div>
+    <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid #1a3a5a; padding-bottom:12px;">
+      <span style="font-size:20px;">📍</span>
+      <div>
+        <div style="font-size:13px; color:#ffaa00; letter-spacing:2px; font-family:'Share Tech Mono',monospace;">DİREKT KONUM SEÇİNİZ</div>
+        <div style="font-size:9px; color:#6a8aaa; letter-spacing:1px; font-family:'Share Tech Mono',monospace; margin-top:3px;">Bulunduğunuz yeri seçin veya Hiçbiri'ne basın</div>
       </div>
-      <button onclick="closeGeminiAssistant()" style="background:transparent; border:1px solid #3a2a2a; color:#aa4444; font-family:'Share Tech Mono',monospace; font-size:11px; padding:4px 10px; cursor:pointer; letter-spacing:1px;">KAPAT</button>
     </div>
 
-    <!-- Mesajlar -->
-    <div id="gemini-msgs" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:4px 0; scrollbar-width:thin; scrollbar-color:#1a3a5a #060d18;"></div>
-
-    <!-- Status / dinleniyor -->
-    <div id="gemini-status" style="font-size:11px; color:#4a9eff; letter-spacing:1px; min-height:16px; text-align:center;"></div>
-
-    <!-- Dalga animasyonu (aktifken görünür) -->
-    <div style="display:flex; justify-content:center; align-items:center; height:32px; gap:4px;">
-      <span class="gm-wave"></span><span class="gm-wave"></span><span class="gm-wave"></span><span class="gm-wave"></span><span class="gm-wave"></span>
-    </div>
-
-    <!-- Yazarak giriş (fallback) -->
-    <div id="gemini-input-row" style="display:none; gap:8px;">
-      <input type="text" id="gemini-text-input" placeholder="Yazarak da gönderebilirsiniz..."
-        style="flex:1; background:rgba(0,20,50,.8); border:1px solid #1a3a5a; color:#c8d8e8; font-family:'Share Tech Mono',monospace; font-size:12px; padding:8px 10px; outline:none;"
-        onkeydown="if(event.key==='Enter') geminiSendText()">
-      <button onclick="geminiSendText()" style="background:rgba(255,68,68,.15); border:1px solid #ff4444; color:#ff4444; font-family:'Share Tech Mono',monospace; font-size:11px; padding:8px 12px; cursor:pointer; letter-spacing:1px;">GÖNDER</button>
-    </div>
+    <div id="place-picker-list" style="display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto;"></div>
 
   </div>
 </div>
