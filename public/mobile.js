@@ -72,16 +72,20 @@ function parseVoiceCode(transcript) {
 }
 
 // ── STATE ─────────────────────────────────────────────
-let username      = '';
-let panicTimer    = null;
-let panicAnim     = null;
-let panicStart    = 0;
-let gpsLat        = null;
-let gpsLng        = null;
-let myCalls       = [];
-let selectedCode  = null;   // seçili acil kod
-let recognition   = null;   // SpeechRecognition instance
-let voiceActive   = false;
+let username          = '';
+let panicTimer        = null;
+let panicAnim         = null;
+let panicStart        = 0;
+let gpsLat            = null;
+let gpsLng            = null;
+let myCalls           = [];
+let selectedCode      = null;    // seçili acil kod
+let recognition       = null;    // SpeechRecognition instance
+let voiceActive       = false;
+let deviceId          = '';      // benzersiz cihaz kimliği
+let locationActive    = false;   // konum yayını aktif mi
+let locationTimer     = null;    // periyodik güncelleme handle
+const LOC_INTERVAL_MS = 15000;   // konum güncelleme sıklığı (ms)
 
 // ══════════════════════════════════════════════════════
 // BAŞLANGIÇ
@@ -422,7 +426,11 @@ async function registerDevice() {
     if (data.banned) {
       alert('Bu cihaz sisteme erişimden engellenmiştir.');
     }
-  } catch {}
+  } catch {
+    // Sunucu erişilemese de uygulamayı bloke etme
+    console.warn('Cihaz kaydı başarısız, yeniden denenecek.');
+    setTimeout(registerDevice, 10000);
+  }
 }
 
 function toggleLocation() {
@@ -468,11 +476,21 @@ function stopLocationBroadcast() {
 
 async function sendLocation(lat, lng, active) {
   try {
-    await fetch(`${SERVER_URL}/api/mobile/location`, {
+    const res = await fetch(`${SERVER_URL}/api/mobile/location`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
       body:    JSON.stringify({ deviceId, lat, lng, active })
     });
+    // Cihaz sunucuda kayıtlı değilse (sunucu yeniden başlatıldıysa) yeniden kaydet
+    if (res.status === 404) {
+      await registerDevice();
+      // Yeniden kayıt sonrası tekrar dene
+      await fetch(`${SERVER_URL}/api/mobile/location`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body:    JSON.stringify({ deviceId, lat, lng, active })
+      });
+    }
   } catch {}
 }
 
